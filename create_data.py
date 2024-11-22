@@ -17,7 +17,13 @@ def run_example(task_prompt, image="", text_input=None):
         prompt = task_prompt
     else:
         prompt = task_prompt + text_input
-    inputs = processor(text=prompt, images=image, return_tensors="pt").to(torch.float16)
+    from PIL import Image
+
+    # Load the image using PIL.Image
+    image_obj = Image.open(image).convert("RGB")
+    inputs = processor(text=prompt, images=image_obj, return_tensors="pt").to(
+        torch.float16
+    )
     generated_ids = model.generate(
         input_ids=inputs["input_ids"],
         pixel_values=inputs["pixel_values"],
@@ -28,10 +34,11 @@ def run_example(task_prompt, image="", text_input=None):
     )
     generated_text = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
     parsed_answer = processor.post_process_generation(
-        generated_text, task=task_prompt, image_size=(image.width, image.height)
+        generated_text, task=task_prompt, image_size=(image_obj.width, image_obj.height)
     )
+    print("finished printing once")
 
-    return parsed_answer
+    return parsed_answer, image_obj.width, image_obj.height
 
 
 def convert_to_od_format(data):
