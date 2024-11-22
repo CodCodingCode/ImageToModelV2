@@ -3,3 +3,5 @@ folder
 images
 output
 yolo11n.pt
+.venv
+__pycache__
