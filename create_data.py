@@ -1,18 +1,22 @@
 from transformers import AutoProcessor, AutoModelForCausalLM
+from groundingdino.util.inference import load_model, load_image, predict, annotate
+import cv2
+import torch
 from PIL import Image
 import requests
 import copy
 import torch
 
 
-model_id = "microsoft/Florence-2-large"
-model = AutoModelForCausalLM.from_pretrained(
-    model_id, trust_remote_code=True, torch_dtype="auto"
-).eval()
-processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)
+def initialize_groundingdino():
+    model = load_model(
+        "config.py",  # Path to the GroundingDINO config file
+        "groundingdino_swint_ogc.pth",  # Path to the checkpoint file
+    )
+    return model
 
 
-# Runs the code in order to detect specific objects
+# Runs the detection using GroundingDINO
 def run_example(image_path, text_prompt, box_threshold=0.35, text_threshold=0.25):
     # Load the model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -20,6 +24,8 @@ def run_example(image_path, text_prompt, box_threshold=0.35, text_threshold=0.25
 
     # Load the image
     image_source, image = load_image(image_path)
+    print(image, image_source)
+    height, width = image_source.shape[0], image_source.shape[1]
 
     # Perform predictions
     boxes, logits, phrases = predict(
@@ -32,7 +38,7 @@ def run_example(image_path, text_prompt, box_threshold=0.35, text_threshold=0.25
     )
 
     # Return the results
-    return boxes, logits, phrases
+    return boxes, logits, phrases, width, height
 
 
 def convert_to_od_format(boxes, logits, labels):
@@ -59,20 +65,30 @@ def convert_to_od_format(boxes, logits, labels):
 
 
 def test():
-    task_prompt = "<OPEN_VOCABULARY_DETECTION>"
-    text_input = "car"
-    url = "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/tasks/car.jpg?download=true"
-    results = run_example(task_prompt=task_prompt, text_input=text_input, image=url)
-    print(results)  # print result
-    data = convert_to_od_format(results["<OPEN_VOCABULARY_DETECTION>"])
-    print(data)  # print data
+    # Image and Prompt
+    IMAGE_PATH = "images/514284-honda-civic-hyundai-tucson-named-ajac-s-2022-car-and-suv-of-the-year_jpg.rf.afdf95c1f4dda173c59ff872c30f826d.jpg"
+    TEXT_PROMPT = "chair . person . dog . car ."
+
+    # Run detection
+    boxes, logits, phrases, width, length = run_example(
+        image_path=IMAGE_PATH,
+        text_prompt=TEXT_PROMPT,
+        box_threshold=0.35,
+        text_threshold=0.25,
+    )
+    print(width, length)
+
+    # Convert to object detection format
+    od_results = convert_to_od_format(boxes, logits, phrases)
+    print(f"Object Detection Results: {od_results}")
+
+    # Optional: Annotate and save the image
+    image_source, _ = load_image(IMAGE_PATH)
+    annotated_frame = annotate(
+        image_source=image_source, boxes=boxes, logits=logits, phrases=phrases
+    )
+    cv2.imwrite("annotated_image.jpg", annotated_frame)
 
 
 if __name__ == "__main__":
     test()
-
-
-"""
-example output:
-({'<OPEN_VOCABULARY_DETECTION>': {'bboxes': [[34.23999786376953, 160.0800018310547, 597.4400024414062, 371.7599792480469]], 'bboxes_labels': ['car'], 'polygons': [], 'polygons_labels': []}}, 640, 480)
-"""
