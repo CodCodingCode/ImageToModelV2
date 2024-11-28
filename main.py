@@ -73,9 +73,19 @@ def split_dataset_with_labels(
     def process_files(file_list, split_name):
         for file_name in file_list:
             image_src_path = os.path.join(input_dir, file_name)
-            label_data = generate_label_for_image(
-                image_src_path, "<OPEN_VOCABULARY_DETECTION>", input_class, input_class
-            )
+            
+            # Check if the file is a valid image
+            if not os.path.isfile(image_src_path):
+                print(f"File not found: {image_src_path}")
+                continue
+            
+            try:
+                label_data = generate_label_for_image(
+                    image_src_path, "<OPEN_VOCABULARY_DETECTION>", input_class, input_class
+                )
+            except Exception as e:
+                print(f"Error processing {image_src_path}: {e}")
+                continue
 
             # Save image
             image_dest_path = os.path.join(output_dir, split_name, "images", file_name)

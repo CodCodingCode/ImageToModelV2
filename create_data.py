@@ -4,6 +4,7 @@ import requests
 import copy
 import torch
 
+
 model_id = "microsoft/Florence-2-large"
 model = AutoModelForCausalLM.from_pretrained(
     model_id, trust_remote_code=True, torch_dtype="auto"
@@ -12,51 +13,47 @@ processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)
 
 
 # Runs the code in order to detect specific objects
-def run_example(task_prompt, image="", text_input=None):
-    if text_input is None:
-        prompt = task_prompt
-    else:
-        prompt = task_prompt + text_input
-    from PIL import Image
+def run_example(image_path, text_prompt, box_threshold=0.35, text_threshold=0.25):
+    # Load the model
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = initialize_groundingdino()
 
-    # Load the image using PIL.Image
-    image_obj = Image.open(image).convert("RGB")
-    inputs = processor(text=prompt, images=image_obj, return_tensors="pt").to(
-        torch.float16
+    # Load the image
+    image_source, image = load_image(image_path)
+
+    # Perform predictions
+    boxes, logits, phrases = predict(
+        model=model,
+        image=image,
+        caption=text_prompt,
+        box_threshold=box_threshold,
+        text_threshold=text_threshold,
+        device=device,
     )
-    generated_ids = model.generate(
-        input_ids=inputs["input_ids"],
-        pixel_values=inputs["pixel_values"],
-        max_new_tokens=1024,
-        early_stopping=False,
-        do_sample=False,
-        num_beams=3,
-    )
-    generated_text = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
-    parsed_answer = processor.post_process_generation(
-        generated_text, task=task_prompt, image_size=(image_obj.width, image_obj.height)
-    )
-    print("finished printing once")
 
-    return parsed_answer, image_obj.width, image_obj.height
+    # Return the results
+    return boxes, logits, phrases
 
 
-def convert_to_od_format(data):
+def convert_to_od_format(boxes, logits, labels):
     """
-    Converts a dictionary with 'bboxes' and 'bboxes_labels' into a dictionary with separate 'bboxes' and 'labels' keys.
-
-    Parameters:
-    - data: The input dictionary with 'bboxes', 'bboxes_labels', 'polygons', and 'polygons_labels' keys.
-
+    Converts GroundingDINO outputs into object detection format.
+    Args:
+        boxes: Tensor of bounding boxes (normalized coordinates).
+        logits: Tensor of confidence scores.
+        labels: List of string labels.
     Returns:
-    - A dictionary with 'bboxes' and 'labels' keys formatted for object detection results.
+        Dictionary with "bboxes", "scores", and "labels".
     """
-    # Extract bounding boxes and labels
-    bboxes = data.get("bboxes", [])
-    labels = data.get("bboxes_labels", [])
 
-    # Construct the output format
-    od_results = {"bboxes": bboxes, "labels": labels}
+    info = {
+        "bboxes": boxes,
+        "scores": logits,
+        "labels": labels,
+    }
+
+    bboxes_list = info["bboxes"].tolist()
+    od_results = {"bboxes": bboxes_list, "labels": labels}
 
     return od_results
 
@@ -65,8 +62,7 @@ def test():
     task_prompt = "<OPEN_VOCABULARY_DETECTION>"
     text_input = "car"
     url = "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/tasks/car.jpg?download=true"
-    image = Image.open(requests.get(url, stream=True).raw)
-    results = run_example(task_prompt, text_input=text_input, image=image)
+    results = run_example(task_prompt=task_prompt, text_input=text_input, image=url)
     print(results)  # print result
     data = convert_to_od_format(results["<OPEN_VOCABULARY_DETECTION>"])
     print(data)  # print data
@@ -74,3 +70,9 @@ def test():
 
 if __name__ == "__main__":
     test()
+
+
+"""
+example output:
+({'<OPEN_VOCABULARY_DETECTION>': {'bboxes': [[34.23999786376953, 160.0800018310547, 597.4400024414062, 371.7599792480469]], 'bboxes_labels': ['car'], 'polygons': [], 'polygons_labels': []}}, 640, 480)
+"""

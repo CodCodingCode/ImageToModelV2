@@ -30,8 +30,14 @@ image = cv2.imread(image_path)
 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 
+# Convert the image to a PyTorch tensor
+image_tensor = (
+    torch.from_numpy(image_rgb).permute(2, 0, 1).float()
+)  # Change shape from HWC to CHW
+
+
 # Predict ROIs with SAM
-sam_predictor.set_image(image_rgb)
+sam_predictor.set_image(image_tensor)
 masks, _, _ = sam_predictor.predict(
     point_coords=None,  # No specific points; predict all regions
     point_labels=None,
@@ -39,17 +45,19 @@ masks, _, _ = sam_predictor.predict(
 )
 
 
+print(masks)
 # Define the prompt
-prompt = "Label all objects in the scene, like cars, trees, and people."
+prompt = "car . person ."
 
 
 # Use DINO for label prediction
-boxes, labels = predict(
+boxes, labels, _ = predict(
     model=dino_model,
-    image=image_rgb,
-    caption=prompt,  # Correct argument for passing text (not 'caption' or 'prompt')
+    image=image_tensor.to(device),  # Move the tensor to the correct device
+    caption=prompt,  # Pass the prompt directly as a string
     box_threshold=0.3,  # Confidence threshold
     text_threshold=0.25,
+    device=device,
 )
 
 
@@ -67,6 +75,7 @@ def box_cxcywh_to_xyxy(boxes):
     return torch.stack((x1, y1, x2, y2), dim=-1)
 
 
+print(boxes, labels)
 # Convert the boxes to a format compatible with SAM
 boxes = box_cxcywh_to_xyxy(boxes)
 
@@ -76,7 +85,7 @@ for box, label in zip(boxes, labels):
     x1, y1, x2, y2 = map(int, box)
     cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
     cv2.putText(
-        image, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
+        image, str(label), (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
     )
 
 
