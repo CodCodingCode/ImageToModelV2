@@ -24,7 +24,6 @@ def run_example(image_path, text_prompt, box_threshold=0.35, text_threshold=0.25
 
     # Load the image
     image_source, image = load_image(image_path)
-    print(image, image_source)
     height, width = image_source.shape[0], image_source.shape[1]
 
     # Perform predictions

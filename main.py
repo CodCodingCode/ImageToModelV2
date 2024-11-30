@@ -8,12 +8,13 @@ from create_data import run_example, convert_to_od_format
 from ultralytics import YOLO
 
 
-def generate_label_for_image(image_path, task_prompt, text_input, label):
+def generate_label_for_image(image_path, text_input, label):
 
-    results, width, height = run_example(
-        task_prompt=task_prompt, image=image_path, text_input=text_input
+    boxes, logits, phrases, width, height = run_example(
+        image_path, text_prompt=text_input, box_threshold=0.35, text_threshold=0.25
     )
-    data = convert_to_od_format(results["<OPEN_VOCABULARY_DETECTION>"])
+
+    data = convert_to_od_format(boxes, logits, phrases)
 
     message = convert_to_yolo_format(
         data, img_width=width, img_height=height, label=label
@@ -81,7 +82,6 @@ def split_dataset_with_labels(
             try:
                 label_data = generate_label_for_image(
                     image_src_path,
-                    "<OPEN_VOCABULARY_DETECTION>",
                     input_class,
                     input_class,
                 )
