@@ -24,15 +24,4 @@ def convert_to_yolo_format(output, img_width, img_height, label):
         if class_id == -1:
             raise ValueError(f"Label '{label}' not found in label_to_id mapping.")
 
-        # Extract bbox values
-        x_min, y_min, x_max, y_max = bbox
-
-        # Convert to YOLO format (normalized values)
-        x_center = ((x_min + x_max) / 2) / img_width
-        y_center = ((y_min + y_max) / 2) / img_height
-        width = (x_max - x_min) / img_width
-        height = (y_max - y_min) / img_height
-
-        # Write to file in YOLO format
-
-        return f"{class_id} {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}\n"
+        return f"{class_id} {bbox[0]:.6f} {bbox[1]:.6f} {bbox[2]:.6f} {bbox[3]:.6f}\n"
