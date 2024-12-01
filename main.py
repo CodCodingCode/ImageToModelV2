@@ -6,19 +6,25 @@ from random import shuffle
 from convert_to_yolo import convert_to_yolo_format
 from create_data import run_example, convert_to_od_format
 from ultralytics import YOLO
+import cv2
+from groundingdino.util.inference import load_model, load_image, predict, annotate
 
 
 def generate_label_for_image(image_path, text_input, label):
 
-    boxes, logits, phrases, width, height = run_example(
+    # Convert to object detection format
+    boxes, logits, phrases, width, length = run_example(
         image_path, text_prompt=text_input, box_threshold=0.35, text_threshold=0.25
     )
 
     data = convert_to_od_format(boxes, logits, phrases)
+    print(data, width, length)
 
     message = convert_to_yolo_format(
-        data, img_width=width, img_height=height, label=label
+        data, img_width=width, img_height=length, label=label
     )
+    print(message)
+
     return message
 
 
@@ -154,10 +160,11 @@ create_yaml_file(output_dir, class_names, yaml_file_path)
 input_dir = input("Enter the path to the folder containing images: ").strip()
 
 train_ratio = float(input("Enter the train split ratio (e.g., 0.7 for 70%): ").strip())
-test_ratio = float(input("Enter the test split ratio (e.g., 0.2 for 20%): ").strip())
 valid_ratio = float(
     input("Enter the validation split ratio (e.g., 0.1 for 10%): ").strip()
 )
+test_ratio = float(input("Enter the test split ratio (e.g., 0.2 for 20%): ").strip())
+
 
 input_class = input("Enter the class you want to detect: ").strip()
 
