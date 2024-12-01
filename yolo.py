@@ -4,7 +4,7 @@ model = YOLO("best.pt")
 
 
 model.predict(
-    source="output/valid/images/514284-honda-civic-hyundai-tucson-named-ajac-s-2022-car-and-suv-of-the-year_jpg.rf.afdf95c1f4dda173c59ff872c30f826d.jpg",
+    source="/Users/owner/Downloads/coding projects/ImageToModelV2/output/test/images/2023-bmw-760i-xdrive-101-1650340309_jpg.rf.18ccac554e3c0af079afc72a95cd7540.jpg",
     save=True,
     conf=0.2,
     show=True,
