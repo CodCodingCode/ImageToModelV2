@@ -1,6 +1,0 @@
-names:
-- car
-nc: 1
-test: /Users/owner/Downloads/coding projects/ImageToModelV2/output/test/images
-train: /Users/owner/Downloads/coding projects/ImageToModelV2/output/train/images
-val: /Users/owner/Downloads/coding projects/ImageToModelV2/output/valid/images
