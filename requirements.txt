@@ -1,9 +1,8 @@
-wheel
-streamlittorch==2.5.1
+streamlit==1.40.2
+PyYAML==6.0.2
+torch==2.5.1
 torchvision==0.20.1
 torchaudio==2.5.1
-streamlit==1.40.2ca
-PyYAML==6.0.2
 opencv-python==4.10.0.84
 ultralytics==8.3.38
-groundingdino @ git+https://github.com/IDEA-Research/GroundingDINO.git@856dde20aee659246248e20734ef9ba5214f5e44  # Use a specific commit or stable branch
+groundingdino @ git+https://github.com/IDEA-Research/GroundingDINO.git@856dde20aee659246248e20734ef9ba5214f5e44
