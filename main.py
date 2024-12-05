@@ -8,6 +8,7 @@ from create_data import run_example, convert_to_od_format
 from ultralytics import YOLO
 import cv2
 from groundingdino.util.inference import load_model, load_image, predict, annotate
+import streamlit as st  # Import Streamlit
 
 
 def generate_label_for_image(image_path, text_input, label):
@@ -29,7 +30,7 @@ def generate_label_for_image(image_path, text_input, label):
 
 
 def split_dataset_with_labels(
-    input_dir, train_ratio, test_ratio, valid_ratio, input_class
+    input_dir, train_ratio, test_ratio, valid_ratio, input_class, progress_bar
 ):
     """
     Splits images and their corresponding labels into train, test, and validation sets.
@@ -77,7 +78,7 @@ def split_dataset_with_labels(
 
     # Copy images and generate labels for each split
     def process_files(file_list, split_name):
-        for file_name in file_list:
+        for i, file_name in enumerate(file_list):
             image_src_path = os.path.join(input_dir, file_name)
 
             # Check if the file is a valid image
@@ -107,9 +108,16 @@ def split_dataset_with_labels(
             with open(label_dest_path, "w") as label_file:
                 label_file.write(label_data)
 
+            # Update progress bar
+            progress_bar.progress((i + 1) / len(file_list))
+
+    # Process each split
     process_files(train_images, "train")
     process_files(test_images, "test")
     process_files(valid_images, "valid")
+
+    # Finalize progress bar
+    progress_bar.progress(1.0)
 
     print(f"Dataset split completed:")
     print(f"Train: {len(train_images)} images")
@@ -154,30 +162,59 @@ class_names = [
 ]  # Update this list with your classes (e.g., ['car', 'person', ...])
 yaml_file_path = "dataset.yaml"  # Path to save the .yaml file
 
-create_yaml_file(output_dir, class_names, yaml_file_path)
-
-# User inputs
-input_dir = input("Enter the path to the folder containing images: ").strip()
-
-train_ratio = float(input("Enter the train split ratio (e.g., 0.7 for 70%): ").strip())
-valid_ratio = float(
-    input("Enter the validation split ratio (e.g., 0.1 for 10%): ").strip()
+# Streamlit UI for user inputs
+st.title("Dataset Preparation for YOLO")
+input_dir = st.text_input("Enter the path to the folder containing images:")
+train_ratio = st.number_input(
+    "Enter the train split ratio (e.g., 0.7 for 70%):",
+    min_value=0.0,
+    max_value=1.0,
+    value=0.7,
 )
-test_ratio = float(input("Enter the test split ratio (e.g., 0.2 for 20%): ").strip())
-
-
-input_class = input("Enter the class you want to detect: ").strip()
-
-# Run the splitter
-split_dataset_with_labels(input_dir, train_ratio, test_ratio, valid_ratio, input_class)
-
-create_yaml_file(
-    output_dir="output", class_names=input_class, yaml_file_path="dataset.yaml"
+valid_ratio = st.number_input(
+    "Enter the validation split ratio (e.g., 0.1 for 10%):",
+    min_value=0.0,
+    max_value=1.0,
+    value=0.2,
 )
-
-model = YOLO("yolo11n.pt")
-
-model.train(
-    data="dataset.yaml",
-    epochs=30,
+test_ratio = st.number_input(
+    "Enter the test split ratio (e.g., 0.2 for 20%):",
+    min_value=0.0,
+    max_value=1.0,
+    value=0.1,
 )
+input_class = st.text_input("Enter the class you want to detect:")
+
+# Button to run the splitter
+if st.button("Split Dataset"):
+    if input_dir and input_class:
+        progress_bar = st.progress(0)  # Initialize progress bar
+        split_dataset_with_labels(
+            input_dir, train_ratio, test_ratio, valid_ratio, input_class, progress_bar
+        )
+        create_yaml_file(
+            output_dir="output",
+            class_names=[input_class],
+            yaml_file_path=yaml_file_path,
+        )
+        st.success("Dataset split completed and YAML file created.")
+    else:
+        st.error("Please fill in all fields.")
+
+# Button to train the model
+if st.button("Train Model"):
+    model = YOLO("yolo11n.pt")
+    model_path = "/Users/owner/Downloads/coding projects/ultralytics/Drone_proj/runs/detect/train57/weights/best.pt"
+    progress_bar = st.progress(0)  # Initialize progress bar
+    model.train(data=yaml_file_path, epochs=30)  # Train for one epoch at a time
+    st.success("Model training completed.")
+    st.write(f"Trained model saved at: {model_path}")  # Display the model path
+
+if model_path and os.path.exists(model_path):
+    with open(model_path, "rb") as f:
+        st.download_button(
+            label="Download Trained Model",
+            data=f,
+            file_name=os.path.basename(model_path),
+            mime="application/octet-stream",
+        )
