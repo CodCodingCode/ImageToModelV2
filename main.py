@@ -201,6 +201,7 @@ if st.button("Split Dataset"):
     else:
         st.error("Please fill in all fields.")
 
+model_path = ""
 # Button to train the model
 if st.button("Train Model"):
     model = YOLO("yolo11n.pt")
