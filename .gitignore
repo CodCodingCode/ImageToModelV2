@@ -1,12 +1,18 @@
-images
-folder
-images
-output
-yolo11n.pt
-.venv
-__pycache__
+# Ignore directories
+images/
+folder/
+output/
+.venv/
+myenv/
+__pycache__/
 
+# Ignore specific files
+yolo11n.pt
 sam_vit_h_4b8939.pth
 groundingdino_swint_ogc.pth
 
-myenv
+# Ignore any temporary files or logs
+*.log
+*.tmp
+yolo.py
+annotated_image.jpg
