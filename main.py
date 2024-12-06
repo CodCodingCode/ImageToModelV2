@@ -164,6 +164,7 @@ yaml_file_path = "dataset.yaml"  # Path to save the .yaml file
 
 # Streamlit UI for user inputs
 st.title("Dataset Preparation for YOLO")
+input_folder = st.file_uploader("input folder")
 input_dir = st.text_input("Enter the path to the folder containing images:")
 train_ratio = st.number_input(
     "Enter the train split ratio (e.g., 0.7 for 70%):",
