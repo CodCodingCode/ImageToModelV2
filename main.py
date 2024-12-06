@@ -164,7 +164,16 @@ yaml_file_path = "dataset.yaml"  # Path to save the .yaml file
 
 # Streamlit UI for user inputs
 st.title("Dataset Preparation for YOLO")
-input_folder = st.file_uploader("input folder")
+uploaded_files = st.file_uploader(
+    "Upload images", type=["jpg", "jpeg", "png"], accept_multiple_files=True
+)
+
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        # Save the uploaded file to a temporary location or process it directly
+        with open(os.path.join("temp_dir", uploaded_file.name), "wb") as f:
+            f.write(uploaded_file.getbuffer())
+
 input_dir = st.text_input("Enter the path to the folder containing images:")
 train_ratio = st.number_input(
     "Enter the train split ratio (e.g., 0.7 for 70%):",
@@ -189,16 +198,27 @@ input_class = st.text_input("Enter the class you want to detect:")
 # Button to run the splitter
 if st.button("Split Dataset"):
     if input_dir and input_class:
-        progress_bar = st.progress(0)  # Initialize progress bar
-        split_dataset_with_labels(
-            input_dir, train_ratio, test_ratio, valid_ratio, input_class, progress_bar
-        )
-        create_yaml_file(
-            output_dir="output",
-            class_names=[input_class],
-            yaml_file_path=yaml_file_path,
-        )
-        st.success("Dataset split completed and YAML file created.")
+        print(f"Input directory: {input_dir}")  # Debugging line
+        if not os.path.exists(input_dir):
+            st.error(
+                f"Directory does not exist: {input_dir}"
+            )  # Error message for the user
+        else:
+            progress_bar = st.progress(0)  # Initialize progress bar
+            split_dataset_with_labels(
+                input_dir,
+                train_ratio,
+                test_ratio,
+                valid_ratio,
+                input_class,
+                progress_bar,
+            )
+            create_yaml_file(
+                output_dir="output",
+                class_names=[input_class],
+                yaml_file_path=yaml_file_path,
+            )
+            st.success("Dataset split completed and YAML file created.")
     else:
         st.error("Please fill in all fields.")
 
