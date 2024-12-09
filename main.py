@@ -30,13 +30,13 @@ def generate_label_for_image(image_path, text_input, label):
 
 
 def split_dataset_with_labels(
-    input_dir, train_ratio, test_ratio, valid_ratio, input_class, progress_bar
+    uploaded_files, train_ratio, test_ratio, valid_ratio, input_class, progress_bar
 ):
     """
     Splits images and their corresponding labels into train, test, and validation sets.
 
     Args:
-        input_dir (str): Path to the input folder containing images.
+        uploaded_files (list): List of uploaded image files.
         train_ratio (float): Proportion of images for training.
         test_ratio (float): Proportion of images for testing.
         valid_ratio (float): Proportion of images for validation.
@@ -45,30 +45,17 @@ def split_dataset_with_labels(
     if not abs(train_ratio + test_ratio + valid_ratio - 1.0) < 1e-6:
         raise ValueError("The sum of train, test, and valid ratios must equal 1.")
 
-    # List all image files
-    valid_extensions = {
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".bmp",
-        ".tiff",
-    }  # Add valid image extensions
-    images = [
-        f
-        for f in os.listdir(input_dir)
-        if os.path.isfile(os.path.join(input_dir, f))
-        and os.path.splitext(f)[1].lower() in valid_extensions
-    ]
-    shuffle(images)  # Shuffle images for randomness
+    # Shuffle images for randomness
+    shuffle(uploaded_files)
 
     # Calculate split indices
-    total_images = len(images)
+    total_images = len(uploaded_files)
     train_count = floor(total_images * train_ratio)
     test_count = floor(total_images * test_ratio)
 
-    train_images = images[:train_count]
-    test_images = images[train_count : train_count + test_count]
-    valid_images = images[train_count + test_count :]
+    train_images = uploaded_files[:train_count]
+    test_images = uploaded_files[train_count : train_count + test_count]
+    valid_images = uploaded_files[train_count + test_count :]
 
     # Define static output directory
     output_dir = "output"
@@ -78,30 +65,28 @@ def split_dataset_with_labels(
 
     # Copy images and generate labels for each split
     def process_files(file_list, split_name):
-        for i, file_name in enumerate(file_list):
-            image_src_path = os.path.join(input_dir, file_name)
+        for i, uploaded_file in enumerate(file_list):
+            image_src_path = uploaded_file.name  # Use the uploaded file directly
 
-            # Check if the file is a valid image
-            if not os.path.isfile(image_src_path):
-                print(f"File not found: {image_src_path}")
-                continue
+            # Save image to output directory
+            image_dest_path = os.path.join(
+                output_dir, split_name, "images", uploaded_file.name
+            )
+            with open(image_dest_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
 
             try:
                 label_data = generate_label_for_image(
-                    image_src_path,
+                    image_dest_path,
                     input_class,
                     input_class,
                 )
             except Exception as e:
-                print(f"Error processing {image_src_path}: {e}")
+                print(f"Error processing {image_dest_path}: {e}")
                 continue
 
-            # Save image
-            image_dest_path = os.path.join(output_dir, split_name, "images", file_name)
-            shutil.copy(image_src_path, image_dest_path)
-
             # Save label (assuming label filename matches image filename but with .txt extension)
-            label_filename = os.path.splitext(file_name)[0] + ".txt"
+            label_filename = os.path.splitext(uploaded_file.name)[0] + ".txt"
             label_dest_path = os.path.join(
                 output_dir, split_name, "labels", label_filename
             )
@@ -168,13 +153,6 @@ uploaded_files = st.file_uploader(
     "Upload images", type=["jpg", "jpeg", "png"], accept_multiple_files=True
 )
 
-if uploaded_files:
-    for uploaded_file in uploaded_files:
-        # Save the uploaded file to a temporary location or process it directly
-        with open(os.path.join("temp_dir", uploaded_file.name), "wb") as f:
-            f.write(uploaded_file.getbuffer())
-
-input_dir = st.text_input("Enter the path to the folder containing images:")
 train_ratio = st.number_input(
     "Enter the train split ratio (e.g., 0.7 for 70%):",
     min_value=0.0,
@@ -197,28 +175,22 @@ input_class = st.text_input("Enter the class you want to detect:")
 
 # Button to run the splitter
 if st.button("Split Dataset"):
-    if input_dir and input_class:
-        print(f"Input directory: {input_dir}")  # Debugging line
-        if not os.path.exists(input_dir):
-            st.error(
-                f"Directory does not exist: {input_dir}"
-            )  # Error message for the user
-        else:
-            progress_bar = st.progress(0)  # Initialize progress bar
-            split_dataset_with_labels(
-                input_dir,
-                train_ratio,
-                test_ratio,
-                valid_ratio,
-                input_class,
-                progress_bar,
-            )
-            create_yaml_file(
-                output_dir="output",
-                class_names=[input_class],
-                yaml_file_path=yaml_file_path,
-            )
-            st.success("Dataset split completed and YAML file created.")
+    if uploaded_files and input_class:
+        progress_bar = st.progress(0)  # Initialize progress bar
+        split_dataset_with_labels(
+            uploaded_files,
+            train_ratio,
+            test_ratio,
+            valid_ratio,
+            input_class,
+            progress_bar,
+        )
+        create_yaml_file(
+            output_dir="output",
+            class_names=[input_class],
+            yaml_file_path="dataset.yaml",
+        )
+        st.success("Dataset split completed and YAML file created.")
     else:
         st.error("Please fill in all fields.")
 
@@ -226,17 +198,19 @@ model_path = ""
 # Button to train the model
 if st.button("Train Model"):
     model = YOLO("yolo11n.pt")
-    model_path = "/Users/owner/Downloads/coding projects/ultralytics/Drone_proj/runs/detect/train57/weights/best.pt"
+    model_path = "/runs/detect/train1/weights/best.pt"
     progress_bar = st.progress(0)  # Initialize progress bar
     model.train(data=yaml_file_path, epochs=30)  # Train for one epoch at a time
     st.success("Model training completed.")
-    st.write(f"Trained model saved at: {model_path}")  # Display the model path
 
-if model_path and os.path.exists(model_path):
-    with open(model_path, "rb") as f:
-        st.download_button(
-            label="Download Trained Model",
-            data=f,
-            file_name=os.path.basename(model_path),
-            mime="application/octet-stream",
-        )
+    # Provide a download button for the trained model
+    if os.path.exists(model_path):
+        with open(model_path, "rb") as f:
+            st.download_button(
+                label="Download Trained Model",
+                data=f,
+                file_name=os.path.basename(model_path),
+                mime="application/octet-stream",
+            )
+    else:
+        st.error("Trained model file not found.")

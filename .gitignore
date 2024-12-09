@@ -16,3 +16,4 @@ groundingdino_swint_ogc.pth
 *.tmp
 yolo.py
 annotated_image.jpg
+temp_images
