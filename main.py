@@ -58,7 +58,7 @@ def split_dataset_with_labels(
     valid_images = uploaded_files[train_count + test_count :]
 
     # Define static output directory
-    output_dir = "output"
+    output_dir = "/output"
     for split in ["train", "test", "valid"]:
         os.makedirs(os.path.join(output_dir, split, "images"), exist_ok=True)
         os.makedirs(os.path.join(output_dir, split, "labels"), exist_ok=True)
