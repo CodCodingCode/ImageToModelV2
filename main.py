@@ -198,7 +198,7 @@ model_path = ""
 # Button to train the model
 if st.button("Train Model"):
     model = YOLO("yolo11n.pt")
-    model_path = "/runs/detect/train1/weights/best.pt"
+    model_path = "/runs/detect/trainweights/best.pt"
     progress_bar = st.progress(0)  # Initialize progress bar
     model.train(data=yaml_file_path, epochs=30)  # Train for one epoch at a time
     st.success("Model training completed.")
